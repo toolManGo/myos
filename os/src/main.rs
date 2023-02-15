@@ -10,6 +10,10 @@ mod console;
 mod lang_items;
 mod logging;
 mod sbi;
+mod batch;
+mod sync;
+mod syscall;
+mod trap;
 
 fn main() {
     // println!("Hello, world!");
@@ -17,12 +21,17 @@ fn main() {
 
 
 core::arch::global_asm!(include_str!("entry.asm"));
+core::arch::global_asm!(include_str!("link_app.S"));
+
 
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
-    println!("Hello, myos!");
-    panic!("Shutdown machine!");
+    logging::init();
+    println!("[kernel] Hello, myos!");
+    trap::init();
+    batch::init();
+    batch::run_next_app();
 }
 
 fn clear_bss() {
