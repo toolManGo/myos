@@ -2,6 +2,8 @@
 #![no_std]
 #![feature(panic_info_message)]
 
+#![feature(alloc_error_handler)]
+
 
 use log::*;
 
@@ -10,10 +12,14 @@ mod console;
 mod lang_items;
 mod logging;
 mod sbi;
-mod batch;
+mod loader;
 mod sync;
 mod syscall;
 mod trap;
+mod config;
+mod task;
+mod timer;
+mod heap_alloc;
 
 fn main() {
     // println!("Hello, world!");
@@ -29,9 +35,13 @@ pub fn rust_main() -> ! {
     clear_bss();
     logging::init();
     println!("[kernel] Hello, myos!");
+    heap_alloc::init_heap();
     trap::init();
-    batch::init();
-    batch::run_next_app();
+    loader::load_apps();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
+    task::run_first_task();
+    panic!("Unreachable in rust_main!");
 }
 
 fn clear_bss() {
