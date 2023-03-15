@@ -18,62 +18,71 @@ _num_app:
     .section .data
     .global app_0_start
     .global app_0_end
+    .align 3
 app_0_start:
-    .incbin "../user/build/bin/ch2b_bad_address.bin"
+    .incbin "../user/build/elf/ch2b_bad_address.elf"
 app_0_end:
 
     .section .data
     .global app_1_start
     .global app_1_end
+    .align 3
 app_1_start:
-    .incbin "../user/build/bin/ch2b_bad_instructions.bin"
+    .incbin "../user/build/elf/ch2b_bad_instructions.elf"
 app_1_end:
 
     .section .data
     .global app_2_start
     .global app_2_end
+    .align 3
 app_2_start:
-    .incbin "../user/build/bin/ch2b_bad_register.bin"
+    .incbin "../user/build/elf/ch2b_bad_register.elf"
 app_2_end:
 
     .section .data
     .global app_3_start
     .global app_3_end
+    .align 3
 app_3_start:
-    .incbin "../user/build/bin/ch2b_hello_world.bin"
+    .incbin "../user/build/elf/ch2b_hello_world.elf"
 app_3_end:
 
     .section .data
     .global app_4_start
     .global app_4_end
+    .align 3
 app_4_start:
-    .incbin "../user/build/bin/ch3b_sleep.bin"
+    .incbin "../user/build/elf/ch3b_sleep.elf"
 app_4_end:
 
     .section .data
     .global app_5_start
     .global app_5_end
+    .align 3
 app_5_start:
-    .incbin "../user/build/bin/ch3b_sleep1.bin"
+    .incbin "../user/build/elf/ch3b_sleep1.elf"
 app_5_end:
 
     .section .data
     .global app_6_start
     .global app_6_end
+    .align 3
 app_6_start:
-    .incbin "../user/build/bin/ch3b_yield0.bin"
+    .incbin "../user/build/elf/ch3b_yield0.elf"
 app_6_end:
 
     .section .data
     .global app_7_start
     .global app_7_end
+    .align 3
 app_7_start:
-    .incbin "../user/build/bin/ch3b_yield1.bin"
+    .incbin "../user/build/elf/ch3b_yield1.elf"
 app_7_end:
 
     .section .data
     .global app_8_start
     .global app_8_end
+    .align 3
 app_8_start:
-    .incbin "../user/build/bin/ch3b_yield2.bin"
+    .incbin "../user/build/elf/ch3b_yield2.elf"
 app_8_end:

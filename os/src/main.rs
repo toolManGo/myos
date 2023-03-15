@@ -4,7 +4,7 @@
 
 #![feature(alloc_error_handler)]
 
-
+extern crate alloc;
 use log::*;
 
 #[macro_use]
@@ -19,7 +19,10 @@ mod trap;
 mod config;
 mod task;
 mod timer;
-mod heap_alloc;
+mod mm;
+#[macro_use]
+extern crate bitflags;
+
 
 fn main() {
     // println!("Hello, world!");
@@ -35,9 +38,11 @@ pub fn rust_main() -> ! {
     clear_bss();
     logging::init();
     println!("[kernel] Hello, myos!");
-    heap_alloc::init_heap();
+    mm::init();
+    println!("[kernel] back to world!");
+    // mm::remap_test();
     trap::init();
-    loader::load_apps();
+    //trap::enable_interrupt();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
     task::run_first_task();

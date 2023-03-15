@@ -4,22 +4,25 @@ mod switch;
 mod task;
 mod context;
 
+use alloc::vec::Vec;
 use lazy_static::*;
-use crate::config::MAX_APP_NUM;
 use crate::sync::UPSafeCell;
 pub use task::{TaskControlBlock, TaskStatus};
+use log::info;
 
 pub use switch::__switch;
-use crate::loader::{get_num_app, init_app_cx};
+use crate::loader::{get_app_data, get_num_app};
 
 pub use context::TaskContext;
+use crate::config::PAGE_SIZE;
+use crate::mm::{MapPermission, VirtAddr, VirtPageNum};
+use crate::trap::TrapContext;
 
 
 /// The task manager, where all the tasks are managed.
 ///
 /// Functions implemented on `TaskManager` deals with all task state transitions
-/// and task context switching. For convenience, you can find wrappers around it
-/// in the module level.
+/// and task context switching.
 ///
 /// Most of `TaskManager` are hidden behind the field `inner`, to defer
 /// borrowing checks to runtime.
@@ -33,7 +36,7 @@ pub struct TaskManager {
 /// The task manager inner in 'UPSafeCell'
 struct TaskManagerInner {
     /// task list
-    tasks: [TaskControlBlock; MAX_APP_NUM],
+    tasks: Vec<TaskControlBlock>,
     /// id of current `Running` task
     current_task: usize,
 }
@@ -41,14 +44,12 @@ struct TaskManagerInner {
 lazy_static! {
     /// a `TaskManager` instance through lazy_static!
     pub static ref TASK_MANAGER: TaskManager = {
+        info!("init TASK_MANAGER");
         let num_app = get_num_app();
-        let mut tasks = [TaskControlBlock {
-            task_cx: TaskContext::zero_init(),
-            task_status: TaskStatus::UnInit,
-        }; MAX_APP_NUM];
-        for (i, t) in tasks.iter_mut().enumerate().take(num_app) {
-            t.task_cx = TaskContext::goto_restore(init_app_cx(i));
-            t.task_status = TaskStatus::Ready;
+        info!("num_app = {}", num_app);
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
+        for i in 0..num_app {
+            tasks.push(TaskControlBlock::new(get_app_data(i), i));
         }
         TaskManager {
             num_app,
@@ -100,6 +101,18 @@ impl TaskManager {
             .map(|id| id % self.num_app)
             .find(|id| inner.tasks[*id].task_status == TaskStatus::Ready)
     }
+    /// Get the current 'Running' task's token.
+    fn get_current_token(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].get_user_token()
+    }
+
+    #[allow(clippy::mut_from_ref)]
+    /// Get the current 'Running' task's trap contexts.
+    fn get_current_trap_cx(&self) -> &mut TrapContext {
+        let inner = self.inner.exclusive_access();
+        inner.tasks[inner.current_task].get_trap_cx()
+    }
 
     /// Switch current `Running` task to the task we have found,
     /// or there is no `Ready` task and we can exit with all applications completed
@@ -120,6 +133,35 @@ impl TaskManager {
         } else {
             panic!("All applications completed!");
         }
+    }
+    fn task_map(&self, start: usize, len: usize, port: usize)->isize{
+        if start&(PAGE_SIZE-1)!=0 {
+            info!("sys_mmap: start address is not page aligned");
+            return -1;
+        }
+        if port>7usize||port==0 {
+            info!("sys_mmap: port number is invalid");
+            return -1;
+        }
+
+        let mut inner = self.inner.exclusive_access();
+        let task_id = inner.current_task;
+        let current_task = &mut inner.tasks[task_id];
+        let memory_set = &mut current_task.memory_set;
+        let start_vpn = VirtPageNum::from(VirtAddr(start));
+        let end_vpn = VirtPageNum::from(VirtAddr(start + len).ceil());
+        for vpn in start_vpn.0..end_vpn.0 {
+            if let Some(pte) = memory_set.translate(VirtPageNum(vpn)) {
+                if pte.is_valid() {
+                    info!("vpn {} has been occupied!", vpn);
+                    return -1;
+                }
+            }
+        }
+
+        let permission = MapPermission::from_bits((port as u8) << 1).unwrap() | MapPermission::U;
+        memory_set.insert_framed_area(VirtAddr(start), VirtAddr(start+len), permission);
+        0
     }
 
 }
@@ -156,4 +198,21 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Get the current 'Running' task's token.
+pub fn current_user_token() -> usize {
+    TASK_MANAGER.get_current_token()
+}
+
+/// Get the current 'Running' task's trap contexts.
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_cx()
+}
+
+
+#[allow(dead_code, unused_variables, unused)]
+pub fn mmap(start: usize, len: usize, port: usize) -> isize{
+    // current
+    todo!()
 }
