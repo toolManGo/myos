@@ -38,6 +38,7 @@ impl FrameAllocator for StackFrameAllocator {
             self.current += 1;
             Some((self.current - 1).into())
         } else {
+            println!("Frame allocation failed! current: {:?} end : {:?} recycled:{:?}", self.current,self.end,self.recycled);
             None
         }
     }
