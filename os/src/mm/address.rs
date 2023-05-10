@@ -8,6 +8,12 @@ const PPN_WIDTH_SV39: usize = PA_WIDTH_SV39 - PAGE_SIZE_BITS;
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PhysAddr(pub usize);
 
+impl PhysAddr {
+    pub fn get_mut<T>(&self) -> &'static mut T {
+        unsafe { (self.0 as *mut T).as_mut().unwrap() }
+    }
+}
+
 impl From<usize> for PhysAddr {
     fn from(v: usize) -> Self { Self(v & ((1 << PA_WIDTH_SV39) - 1)) }
 }

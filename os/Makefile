@@ -17,7 +17,7 @@ KERNEL_ENTRY_PA := 0x80200000
 OBJDUMP := rust-objdump --arch-name=riscv64
 OBJCOPY := rust-objcopy --binary-architecture=riscv64
 
-CHAPTER ?= 4
+CHAPTER ?= 5
 TEST ?= $(CHAPTER)
 BASE ?= 1
 

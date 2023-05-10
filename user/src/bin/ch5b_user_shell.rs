@@ -28,6 +28,10 @@ pub fn main() -> i32 {
                 print!("\n");
                 if !line.is_empty() {
                     line.push('\0');
+                    if line.as_str() == "exit\0" {
+                        println!("Bye!");
+                        return 0;
+                    }
                     let pid = fork();
                     if pid == 0 {
                         // child process

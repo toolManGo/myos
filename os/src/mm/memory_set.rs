@@ -1,4 +1,5 @@
 use alloc::collections::BTreeMap;
+use crate::sync::UPSafeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
@@ -26,9 +27,10 @@ extern "C" {
 
 lazy_static! {
     /// a memory set instance through lazy_static! managing kernel space
-    pub static ref KERNEL_SPACE: Arc<Mutex<MemorySet>> =
-        Arc::new(Mutex::new(MemorySet::new_kernel()));
+    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
+        Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
 }
+
 
 // 一小块区域的虚拟地址映射物理地址关系
 pub struct MapArea {
@@ -54,6 +56,12 @@ impl MapArea {
     pub fn map(&mut self, page_table: &mut PageTable) {
         for vpn in self.vpn_range {
             self.map_one(page_table, vpn);
+        }
+    }
+
+    pub fn unmap(&mut self, page_table: &mut PageTable) {
+        for vpn in self.vpn_range {
+            self.unmap_one(page_table, vpn);
         }
     }
 
@@ -105,6 +113,18 @@ impl MapArea {
             current_vpn.step();
         }
     }
+
+    pub fn from_another(another: &MapArea) -> Self {
+        Self {
+            vpn_range: VPNRange::new(
+                another.vpn_range.get_start(),
+                another.vpn_range.get_end(),
+            ),
+            data_frames: BTreeMap::new(),
+            map_type: another.map_type,
+            map_perm: another.map_perm,
+        }
+    }
 }
 
 
@@ -133,6 +153,25 @@ pub struct MemorySet {
 }
 
 impl MemorySet {
+    pub fn recycle_data_pages(&mut self) {
+        self.areas.clear();
+    }
+    pub fn from_existed_user(user_apace: &MemorySet) -> MemorySet {
+        let mut memory_set = Self::new_bare();
+        memory_set.map_trampoline();
+        for area in user_apace.areas.iter() {
+            let new_area = MapArea::from_another(area);
+            memory_set.push(new_area,None);
+
+            for vpn in area.vpn_range {
+                let src_ppn = user_apace.translate(vpn).unwrap().ppn();
+                let dst_ppn = memory_set.translate(vpn).unwrap().ppn();
+                dst_ppn.get_bytes_array().copy_from_slice(src_ppn.get_bytes_array());
+            }
+        }
+        memory_set
+    }
+
     pub fn new_bare() -> Self {
         Self {
             page_table: PageTable::new(),
@@ -150,6 +189,18 @@ impl MemorySet {
 
     pub fn insert_framed_area(&mut self, start_va: VirtAddr, end_va: VirtAddr, permission: MapPermission) {
         self.push(MapArea::new(start_va, end_va, MapType::Framed, permission), None);
+    }
+
+    pub fn remove_area_with_start_vpn(&mut self, start_vpn: VirtPageNum) {
+        if let Some((idx, area)) = self
+            .areas
+            .iter_mut()
+            .enumerate()
+            .find(|(_, area)| area.vpn_range.get_start() == start_vpn)
+        {
+            area.unmap(&mut self.page_table);
+            self.areas.remove(idx);
+        }
     }
 
     pub fn new_kernel() -> Self {
@@ -304,11 +355,9 @@ impl MemorySet {
 }
 
 
-
-
 #[allow(unused)]
 pub fn remap_test() {
-    let mut kernel_space = KERNEL_SPACE.lock();
+    let mut kernel_space = KERNEL_SPACE.exclusive_access();
     let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
     let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
     let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
