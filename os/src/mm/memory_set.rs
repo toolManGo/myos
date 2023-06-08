@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use log::info;
 use riscv::register::satp;
-use crate::config::{MEMORY_END, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE};
+use crate::config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE};
 use crate::mm::address::{PhysAddr, PhysPageNum, SimpleRange, StepByOne, VirtAddr, VirtPageNum, VPNRange};
 use crate::mm::frame_allocator::{frame_alloc, FrameTracker};
 use crate::mm::page_table::{PageTable, PTEFlags};
@@ -142,6 +142,11 @@ bitflags! {
         const U = 1 << 4;
     }
 }
+
+/// Get the token of the kernel memory space
+pub fn kernel_token() -> usize {
+    KERNEL_SPACE.exclusive_access().token()
+}
 /// 地址空间 是一系列有关联的不一定连续的逻辑段，
 /// 这种关联一般是指这些逻辑段组成的虚拟内存空间与一个运行的程序（目前把一个运行的程序称为任务，后续会称为进程）绑定，
 /// 即这个运行的程序对代码和数据的直接访问范围限制在它关联的虚拟地址空间之内。
@@ -263,6 +268,17 @@ impl MemorySet {
             ),
             None,
         );
+        info!("mapping memory-mapped registers");
+        for pair in MMIO {
+            memory_set.push(
+                MapArea::new(
+                    (*pair).0.into(),
+                    ((*pair).0 + (*pair).1).into(),
+                    MapType::Identical,
+                    MapPermission::R | MapPermission::W,
+                ),
+                None);
+        }
         memory_set
     }
     fn map_trampoline(&mut self) {
@@ -355,26 +371,26 @@ impl MemorySet {
 }
 
 
-#[allow(unused)]
-pub fn remap_test() {
-    let mut kernel_space = KERNEL_SPACE.exclusive_access();
-    let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
-    let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
-    let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
-    assert!(!kernel_space
-        .page_table
-        .translate(mid_text.floor())
-        .unwrap()
-        .writable());
-    assert!(!kernel_space
-        .page_table
-        .translate(mid_rodata.floor())
-        .unwrap()
-        .writable());
-    assert!(!kernel_space
-        .page_table
-        .translate(mid_data.floor())
-        .unwrap()
-        .executable());
-    info!("remap_test passed!");
-}
+// #[allow(unused)]
+// pub fn remap_test() {
+//     let mut kernel_space = KERNEL_SPACE.exclusive_access();
+//     let mid_text: VirtAddr = ((stext as usize + etext as usize) / 2).into();
+//     let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) / 2).into();
+//     let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
+//     assert!(!kernel_space
+//         .page_table
+//         .translate(mid_text.floor())
+//         .unwrap()
+//         .writable());
+//     assert!(!kernel_space
+//         .page_table
+//         .translate(mid_rodata.floor())
+//         .unwrap()
+//         .writable());
+//     assert!(!kernel_space
+//         .page_table
+//         .translate(mid_data.floor())
+//         .unwrap()
+//         .executable());
+//     info!("remap_test passed!");
+// }

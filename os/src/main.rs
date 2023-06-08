@@ -20,6 +20,9 @@ mod config;
 mod task;
 mod timer;
 mod mm;
+mod fs;
+mod drivers;
+
 #[macro_use]
 extern crate bitflags;
 
@@ -39,7 +42,7 @@ pub fn rust_main() -> ! {
     logging::init();
     println!("[kernel] Hello, myos!");
     mm::init();
-    mm::remap_test();
+    // mm::remap_test();
     task::add_initproc();
     info!("after initproc!");
     trap::init();

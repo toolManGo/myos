@@ -1,6 +1,7 @@
 use alloc::sync::Arc;
 use log::info;
 use crate::config::MAX_SYSCALL_NUM;
+use crate::fs::{open_file, OpenFlags};
 use crate::loader::get_app_data_by_name;
 use crate::mm::page_table::{PageTable, translated_refmut, translated_str};
 use crate::mm::{PhysAddr, VirtAddr};
@@ -166,9 +167,10 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 pub fn sys_exec(path: *const u8) -> isize {
     let token = current_user_token();
     let path = translated_str(token, path);
-    if let Some(data) = get_app_data_by_name(path.as_str()) {
+    if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
+        let all_data = app_inode.read_all();
         let task = current_task().unwrap();
-        task.exec(data);
+        task.exec(all_data.as_slice());
         0
     } else {
         -1

@@ -1,6 +1,6 @@
 TARGET := riscv64gc-unknown-none-elf
 MODE := release
-APP_DIR := ./src/bin
+APP_DIR := src/bin
 TARGET_DIR := target/$(TARGET)/$(MODE)
 BUILD_DIR := build
 OBJDUMP := rust-objdump --arch-name=riscv64

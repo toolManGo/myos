@@ -3,7 +3,7 @@
     .section .data
     .global _num_app
 _num_app:
-    .quad 16
+    .quad 20
     .quad app_0_start
     .quad app_1_start
     .quad app_2_start
@@ -20,7 +20,11 @@ _num_app:
     .quad app_13_start
     .quad app_14_start
     .quad app_15_start
-    .quad app_15_end
+    .quad app_16_start
+    .quad app_17_start
+    .quad app_18_start
+    .quad app_19_start
+    .quad app_19_end
 
     .global _app_names
 _app_names:
@@ -40,6 +44,10 @@ _app_names:
     .string "ch5b_forktree"
     .string "ch5b_initproc"
     .string "ch5b_user_shell"
+    .string "ch6b_cat"
+    .string "ch6b_filetest_simple"
+    .string "ch6b_initproc"
+    .string "ch6b_user_shell"
 
     .section .data
     .global app_0_start
@@ -168,3 +176,35 @@ app_14_end:
 app_15_start:
     .incbin "../user/build/elf/ch5b_user_shell.elf"
 app_15_end:
+
+    .section .data
+    .global app_16_start
+    .global app_16_end
+    .align 3
+app_16_start:
+    .incbin "../user/build/elf/ch6b_cat.elf"
+app_16_end:
+
+    .section .data
+    .global app_17_start
+    .global app_17_end
+    .align 3
+app_17_start:
+    .incbin "../user/build/elf/ch6b_filetest_simple.elf"
+app_17_end:
+
+    .section .data
+    .global app_18_start
+    .global app_18_end
+    .align 3
+app_18_start:
+    .incbin "../user/build/elf/ch6b_initproc.elf"
+app_18_end:
+
+    .section .data
+    .global app_19_start
+    .global app_19_end
+    .align 3
+app_19_start:
+    .incbin "../user/build/elf/ch6b_user_shell.elf"
+app_19_end:
