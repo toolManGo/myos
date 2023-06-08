@@ -354,14 +354,16 @@ impl DiskInode {
                 self.get_block_id(start_block as u32, block_device) as usize,
                 Arc::clone(block_device),
             )
-                .lock()
-                .read(0, |data_block: &DataBlock| {
-                    let src = &data_block[start % BLOCK_SZ..start % BLOCK_SZ + block_read_size];
-                    dst.copy_from_slice(src);
-                });
+            .lock()
+            .read(0, |data_block: &DataBlock| {
+                let src = &data_block[start % BLOCK_SZ..start % BLOCK_SZ + block_read_size];
+                dst.copy_from_slice(src);
+            });
             read_size += block_read_size;
             // move to next block
-            if end_current_block == end { break; }
+            if end_current_block == end {
+                break;
+            }
             start_block += 1;
             start = end_current_block;
         }

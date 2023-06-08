@@ -1,12 +1,14 @@
+use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use log::info;
 use crate::config::MAX_SYSCALL_NUM;
 use crate::fs::{open_file, OpenFlags};
-use crate::loader::get_app_data_by_name;
-use crate::mm::page_table::{PageTable, translated_refmut, translated_str};
+// use crate::loader::get_app_data_by_name;
+use crate::mm::page_table::{PageTable, translated_ref, translated_refmut, translated_str};
 use crate::mm::{PhysAddr, VirtAddr};
 
-use crate::task::{add_task, current_task, current_user_token, exit_current_and_run_next, suspend_current_and_run_next, TaskStatus};
+use crate::task::{add_task, current_task, current_user_token, exit_current_and_run_next, MAX_SIG, pid2task, SignalAction, SignalFlags, suspend_current_and_run_next, TaskStatus};
 
 
 use crate::timer::get_time_us;
@@ -31,12 +33,14 @@ pub struct TimeVal {
     pub sec: usize,
     pub usec: usize,
 }
+
 #[derive(Clone, Copy)]
 pub struct TaskInfo {
     pub status: TaskStatus,
     pub syscall_times: [u32; MAX_SYSCALL_NUM],
     pub time: usize,
 }
+
 /// get time with second and microsecond
 // pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 //     let us = get_time_us();
@@ -89,7 +93,6 @@ pub fn sys_mmap(_start: usize, _len: usize, _port: usize) -> isize {
     // // }
     //
     // mmap(_start, _len, _port)
-
 }
 
 pub fn sys_munmap(_start: usize, _len: usize) -> isize {
@@ -164,15 +167,106 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 }
 
 /// Syscall Exec which accepts the elf path
-pub fn sys_exec(path: *const u8) -> isize {
+pub fn sys_exec(path: *const u8, mut args: *const usize) -> isize {
     let token = current_user_token();
     let path = translated_str(token, path);
+    let mut args_vec: Vec<String> = Vec::new();
+    loop {
+        let arg_str_ptr = *translated_ref(token, args);
+        if arg_str_ptr == 0 {
+            break;
+        }
+        args_vec.push(translated_str(token, arg_str_ptr as *const u8));
+        unsafe {
+            args = args.add(1);
+        }
+    }
     if let Some(app_inode) = open_file(path.as_str(), OpenFlags::RDONLY) {
         let all_data = app_inode.read_all();
         let task = current_task().unwrap();
-        task.exec(all_data.as_slice());
+        let argc = args_vec.len();
+        task.exec(all_data.as_slice(), args_vec);
+        // return argc because cx.x[10] will be covered with it later
+        argc as isize
+    } else {
+        -1
+    }
+}
+
+pub fn sys_kill(pid: usize, signum: i32) -> isize {
+    if let Some(task) = pid2task(pid) {
+        if let Some(flag) = SignalFlags::from_bits(1 << signum) {
+            // insert the signal if legal
+            let mut task_ref = task.inner_exclusive_access();
+            if task_ref.signals.contains(flag) {
+                return -1;
+            }
+            task_ref.signals.insert(flag);
+            0
+        } else {
+            -1
+        }
+    } else {
+        -1
+    }
+}
+
+
+pub fn sys_sigprocmask(mask: u32) -> isize {
+    if let Some(task) = current_task() {
+        let mut inner = task.inner_exclusive_access();
+        let old_mask = inner.signal_mask;
+        if let Some(flag) = SignalFlags::from_bits(mask) {
+            inner.signal_mask = flag;
+            old_mask.bits() as isize
+        } else {
+            -1
+        }
+    } else {
+        -1
+    }
+}
+
+
+
+/// 功能：为当前进程设置某种信号的处理函数，同时保存设置之前的处理函数。
+/// 参数：signum 表示信号的编号，action 表示要设置成的处理函数的指针
+/// old_action 表示用于保存设置之前的处理函数的指针（SignalAction 结构稍后介绍）。
+/// 返回值：如果传入参数错误（比如传入的 action 或 old_action 为空指针或者）
+/// 信号类型不存在返回 -1 ，否则返回 0 。
+/// syscall ID: 134
+pub fn sys_sigaction(
+    signum: i32,
+    action: *const SignalAction,
+    old_action: *mut SignalAction,
+) -> isize {
+    if signum as usize > MAX_SIG {
+        return -1;
+    }
+    let token = current_user_token();
+    let task = current_task().unwrap();
+    let mut inner = task.inner_exclusive_access();
+    if let Some(flag) = SignalFlags::from_bits(1 << signum) {
+        if check_sigaction_error(flag, action as usize, old_action as usize) {
+            return -1;
+        }
+        let prev_action = inner.signal_actions.table[signum as usize];
+        *translated_refmut(token, old_action) = prev_action;
+        inner.signal_actions.table[signum as usize] = *translated_refmut(token, action);
         0
     } else {
         -1
+    }
+}
+
+fn check_sigaction_error(signal: SignalFlags, action: usize, old_action: usize) -> bool {
+    if action == 0
+        || old_action == 0
+        || signal == SignalFlags::SIGKILL
+        || signal == SignalFlags::SIGSTOP
+    {
+        true
+    } else {
+        false
     }
 }

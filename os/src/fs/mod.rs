@@ -1,5 +1,6 @@
 mod stdio;
 mod inode;
+mod pipe;
 
 use crate::mm::page_table::UserBuffer;
 
@@ -41,4 +42,5 @@ bitflags! {
 
 pub use stdio::{Stdin, Stdout};
 pub use inode::{OSInode, open_file, OpenFlags, list_apps};
+pub use pipe::{Pipe, make_pipe};
 

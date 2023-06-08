@@ -1,7 +1,7 @@
 use core::arch::global_asm;
 use log::error;
 use crate::syscall::syscall;
-use crate::task::{current_trap_cx, current_user_token, exit_current_and_run_next, suspend_current_and_run_next};
+use crate::task::{check_signals_error_of_current, current_add_signal, current_trap_cx, current_user_token, exit_current_and_run_next, handle_signals, SignalFlags, suspend_current_and_run_next};
 use crate::timer::set_next_trigger;
 use riscv::register::{
     mtvec::TrapMode,
@@ -33,7 +33,7 @@ fn set_user_trap_entry() {
 
 
 #[no_mangle]
-/// handle an interrupt, exception, or system call from user space
+/// handle an interrupt, exception, or system call from user space]
 pub fn trap_handler() -> ! {
     set_kernel_trap_entry();
     let scause = scause::read();
@@ -44,7 +44,7 @@ pub fn trap_handler() -> ! {
             let mut cx = current_trap_cx();
             cx.sepc += 4;
             // get system call return value
-            let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12], cx.x[13]]);
+            let result = syscall(cx.x[17], [cx.x[10], cx.x[11], cx.x[12],cx.x[13]]);
             // cx is changed during sys_exec, so we have to call it again
             cx = current_trap_cx();
             cx.x[10] = result as usize;
@@ -55,19 +55,18 @@ pub fn trap_handler() -> ! {
         | Trap::Exception(Exception::InstructionPageFault)
         | Trap::Exception(Exception::LoadFault)
         | Trap::Exception(Exception::LoadPageFault) => {
+            /*
             println!(
-                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, core dumped.",
+                "[kernel] {:?} in application, bad addr = {:#x}, bad instruction = {:#x}, kernel killed it.",
                 scause.cause(),
                 stval,
                 current_trap_cx().sepc,
             );
-            // page fault exit code
-            exit_current_and_run_next(-2);
+            */
+            current_add_signal(SignalFlags::SIGSEGV);
         }
         Trap::Exception(Exception::IllegalInstruction) => {
-            println!("[kernel] IllegalInstruction in application, core dumped.");
-            // illegal instruction exit code
-            exit_current_and_run_next(-3);
+            current_add_signal(SignalFlags::SIGILL);
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
@@ -80,6 +79,15 @@ pub fn trap_handler() -> ! {
                 stval
             );
         }
+    }
+    // handle signals (handle the sent signal)
+    //println!("[K] trap_handler:: handle_signals");
+    handle_signals();
+
+    // check error signals (if error then exit)
+    if let Some((errno, msg)) = check_signals_error_of_current() {
+        println!("[kernel] {}", msg);
+        exit_current_and_run_next(errno);
     }
     trap_return();
 }

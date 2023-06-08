@@ -16,6 +16,7 @@ lock_api = "=0.4.6"
 xmas-elf = "0.7.0"
 virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "4ee80e5" }
 easy-fs = { path = "../easy-fs" }
+sbi-rt = { version = "0.0.2", features = ["legacy"] }
 
 [profile.release]
 debug = true

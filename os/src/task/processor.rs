@@ -12,7 +12,7 @@ use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
-use crate::loader::get_app_data_by_name;
+// use crate::loader::get_app_data_by_name;
 use crate::mm::page_table::translated_str;
 use crate::task::add_task;
 

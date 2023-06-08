@@ -6,16 +6,22 @@ mod process;
 use fs::*;
 use process::*;
 use crate::fs::Stat;
-
+use crate::task::{SignalAction, sys_sigreturn};
+const SYSCALL_DUP: usize = 24;
 const SYSCALL_UNLINKAT: usize = 35;
 const SYSCALL_LINKAT: usize = 37;
 const SYSCALL_OPEN: usize = 56;
 const SYSCALL_CLOSE: usize = 57;
+const SYSCALL_PIPE: usize = 59;
 const SYSCALL_READ: usize = 63;
 const SYSCALL_WRITE: usize = 64;
 const SYSCALL_FSTAT: usize = 80;
 const SYSCALL_EXIT: usize = 93;
 const SYSCALL_YIELD: usize = 124;
+const SYSCALL_SIGACTION: usize = 134;
+const SYSCALL_SIGPROCMASK: usize = 135;
+const SYSCALL_SIGRETURN: usize = 139;
+const SYSCALL_SET_PRIORITY: usize = 140;
 const SYSCALL_GET_TIME: usize = 169;
 const SYSCALL_GETPID: usize = 172;
 const SYSCALL_FORK: usize = 220;
@@ -24,12 +30,16 @@ const SYSCALL_WAITPID: usize = 260;
 const SYSCALL_SPAWN: usize = 400;
 const SYSCALL_MUNMAP: usize = 215;
 const SYSCALL_MMAP: usize = 222;
-const SYSCALL_SET_PRIORITY: usize = 140;
 const SYSCALL_TASK_INFO: usize = 410;
+
+
+
 
 /// handle syscall exception with `syscall_id` and other arguments
 pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
     match syscall_id {
+
+        SYSCALL_DUP => sys_dup(args[0]),
         SYSCALL_LINKAT => sys_linkat(args[1] as *const u8, args[3] as *const u8),
         SYSCALL_UNLINKAT => sys_unlinkat(args[1] as *const u8),
         SYSCALL_OPEN => sys_open(args[1] as *const u8, args[2] as u32),
@@ -41,7 +51,7 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
         SYSCALL_YIELD => sys_yield(),
         SYSCALL_GETPID => sys_getpid(),
         SYSCALL_FORK => sys_fork(),
-        SYSCALL_EXEC => sys_exec(args[0] as *const u8),
+        SYSCALL_EXEC => sys_exec(args[0] as *const u8, args[1] as *const usize),
         SYSCALL_WAITPID => sys_waitpid(args[0] as isize, args[1] as *mut i32),
         SYSCALL_GET_TIME => sys_get_time(args[0] as *mut TimeVal, args[1]),
         SYSCALL_MMAP => sys_mmap(args[0], args[1], args[2]),
@@ -49,6 +59,16 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
         SYSCALL_SET_PRIORITY => sys_set_priority(args[0] as isize),
         SYSCALL_TASK_INFO => sys_task_info(args[0] as *mut TaskInfo),
         SYSCALL_SPAWN => sys_spawn(args[0] as *const u8),
+        SYSCALL_SIGACTION => sys_sigaction(
+            args[0] as i32,
+            args[1] as *const SignalAction,
+            args[2] as *mut SignalAction,
+        ),
+        SYSCALL_SIGPROCMASK => sys_sigprocmask(args[0] as u32),
+        SYSCALL_SIGRETURN => sys_sigreturn(),
+
+        SYSCALL_PIPE => sys_pipe(args[0] as *mut usize),
+
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

@@ -1,3 +1,4 @@
+use alloc::string::String;
 use crate::config::{ TRAP_CONTEXT};
 use crate::mm::{KERNEL_SPACE, MemorySet, PhysPageNum, VirtAddr};
 use crate::task::context::TaskContext;
@@ -7,8 +8,11 @@ use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
 use core::cell::RefMut;
 use crate::fs::{File, Stdin, Stdout};
+use crate::mm::page_table::translated_refmut;
 use crate::sync::UPSafeCell;
+use crate::task::action::SignalActions;
 use crate::task::pid::{KernelStack, pid_alloc, PidHandle};
+use crate::task::SignalFlags;
 
 /// task control block structure
 pub struct TaskControlBlock {
@@ -46,6 +50,18 @@ pub struct TaskControlBlockInner {
     pub exit_code: i32,
 
     pub fd_table: Vec<Option<Arc<dyn File + Send + Sync>>>,
+
+    pub signals: SignalFlags,
+    pub signal_mask: SignalFlags,
+    // the signal which is being handling
+    pub handling_sig: isize,
+    // Signal actions
+    pub signal_actions: SignalActions,
+    // if the task is killed
+    pub killed: bool,
+    // if the task is frozen by a signal
+    pub frozen: bool,
+    pub trap_ctx_backup: Option<TrapContext>,
 }
 
 
@@ -126,6 +142,13 @@ impl TaskControlBlock {
                         // 2 -> stderr
                         Some(Arc::new(Stdout)),
                     ],
+                    signals: SignalFlags::empty(),
+                    signal_mask: SignalFlags::empty(),
+                    handling_sig: -1,
+                    signal_actions: SignalActions::default(),
+                    killed: false,
+                    frozen: false,
+                    trap_ctx_backup: None,
                 })
             },
         };
@@ -143,14 +166,37 @@ impl TaskControlBlock {
         task_control_block
     }
 
-    pub fn exec(&self , elf_data:&[u8]){
+    pub fn exec(&self , elf_data:&[u8], args: Vec<String>){
         // memory_set with elf program headers/trampoline/trap context/user stack
-        let (memory_set, user_sp, entry_point) = MemorySet::from_elf(elf_data);
+        let (memory_set, mut user_sp, entry_point) = MemorySet::from_elf(elf_data);
         let trap_cx_ppn = memory_set
             .translate(VirtAddr::from(TRAP_CONTEXT).into())
             .unwrap()
             .ppn();
-
+        // push arguments on user stack
+        user_sp -= (args.len() + 1) * core::mem::size_of::<usize>();
+        let argv_base = user_sp;
+        let mut argv: Vec<_> = (0..=args.len())
+            .map(|arg| {
+                translated_refmut(
+                    memory_set.token(),
+                    (argv_base + arg * core::mem::size_of::<usize>()) as *mut usize
+                )
+            })
+            .collect();
+        *argv[args.len()] = 0;
+        for i in 0..args.len() {
+            user_sp -= args[i].len() + 1;
+            *argv[i] = user_sp;
+            let mut p = user_sp;
+            for c in args[i].as_bytes() {
+                *translated_refmut(memory_set.token(), p as *mut u8) = *c;
+                p += 1;
+            }
+            *translated_refmut(memory_set.token(), p as *mut u8) = 0;
+        }
+        // make the user_sp aligned to 8B for k210 platform
+        user_sp -= user_sp % core::mem::size_of::<usize>();
         // **** access inner exclusively
         let mut inner = self.inner_exclusive_access();
         // substitute memory_set
@@ -166,7 +212,9 @@ impl TaskControlBlock {
             self.kernel_stack.get_top(),
             trap_handler as usize,
         );
-        // **** stop exclusively accessing inner automatically
+        trap_cx.x[10] = args.len();
+        trap_cx.x[11] = argv_base;
+        // **** release inner automatically
     }
 
 
@@ -200,6 +248,14 @@ impl TaskControlBlock {
                     children: Vec::new(),
                     exit_code: 0,
                     fd_table: new_fd_table,
+                    signals: SignalFlags::empty(),
+                    // inherit the signal_mask and signal_action
+                    signal_mask: parent_inner.signal_mask,
+                    handling_sig: -1,
+                    signal_actions: parent_inner.signal_actions.clone(),
+                    killed: false,
+                    frozen: false,
+                    trap_ctx_backup: None,
                 })
             },
         });
