@@ -44,15 +44,15 @@ pub fn rust_main() -> ! {
     mm::init();
     // mm::remap_test();
     // task::add_initproc();
-    println!("after initproc!");
+    // println!("after initproc!");
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    println!("after timer!");
+    // println!("after timer!");
     fs::list_apps();
-    println!("after list_apps!");
+    // println!("after list_apps!");
     task::add_initproc();
-    println!("after add_initproc!");
+    // println!("after add_initproc!");
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }
