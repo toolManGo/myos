@@ -14,7 +14,6 @@ pub const SYSCALL_SLEEP: usize = 101;
 pub const SYSCALL_YIELD: usize = 124;
 pub const SYSCALL_GETTIMEOFDAY: usize = 169;
 pub const SYSCALL_GETPID: usize = 172;
-pub const SYSCALL_GETTID: usize = 178;
 pub const SYSCALL_FORK: usize = 220;
 pub const SYSCALL_EXEC: usize = 221;
 pub const SYSCALL_WAITPID: usize = 260;
@@ -27,18 +26,21 @@ pub const SYSCALL_MAIL_WRITE: usize = 402;
 pub const SYSCALL_DUP: usize = 24;
 pub const SYSCALL_PIPE: usize = 59;
 pub const SYSCALL_TASK_INFO: usize = 410;
-pub const SYSCALL_THREAD_CREATE: usize = 460;
-pub const SYSCALL_WAITTID: usize = 462;
-pub const SYSCALL_MUTEX_CREATE: usize = 463;
-pub const SYSCALL_MUTEX_LOCK: usize = 464;
-pub const SYSCALL_MUTEX_UNLOCK: usize = 466;
-pub const SYSCALL_SEMAPHORE_CREATE: usize = 467;
-pub const SYSCALL_SEMAPHORE_UP: usize = 468;
+const SYSCALL_THREAD_CREATE: usize = 1000;
+const SYSCALL_GETTID: usize = 1001;
+const SYSCALL_WAITTID: usize = 1002;
+const SYSCALL_MUTEX_CREATE: usize = 1010;
+const SYSCALL_MUTEX_LOCK: usize = 1011;
+const SYSCALL_MUTEX_UNLOCK: usize = 1012;
+const SYSCALL_SEMAPHORE_CREATE: usize = 1020;
+const SYSCALL_SEMAPHORE_UP: usize = 1021;
+const SYSCALL_SEMAPHORE_DOWN: usize = 1022;
+const SYSCALL_CONDVAR_CREATE: usize = 1030;
+const SYSCALL_CONDVAR_SIGNAL: usize = 1031;
+const SYSCALL_CONDVAR_WAIT: usize = 1032;
+
+
 pub const SYSCALL_ENABLE_DEADLOCK_DETECT: usize = 469;
-pub const SYSCALL_SEMAPHORE_DOWN: usize = 470;
-pub const SYSCALL_CONDVAR_CREATE: usize = 471;
-pub const SYSCALL_CONDVAR_SIGNAL: usize = 472;
-pub const SYSCALL_CONDVAR_WAIT: usize = 473;
 
 pub fn syscall(id: usize, args: [usize; 3]) -> isize {
     let mut ret: isize;

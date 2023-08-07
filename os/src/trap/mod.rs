@@ -2,7 +2,7 @@ use core::arch::global_asm;
 use log::error;
 use crate::syscall::syscall;
 use crate::task::{check_signals_error_of_current, current_add_signal, current_trap_cx, current_user_token, exit_current_and_run_next, handle_signals, SignalFlags, suspend_current_and_run_next};
-use crate::timer::set_next_trigger;
+use crate::timer::{check_timer, set_next_trigger};
 use riscv::register::{
     mtvec::TrapMode,
     scause::{self, Exception, Interrupt, Trap},
@@ -70,6 +70,7 @@ pub fn trap_handler() -> ! {
         }
         Trap::Interrupt(Interrupt::SupervisorTimer) => {
             set_next_trigger();
+            check_timer();
             suspend_current_and_run_next();
         }
         _ => {
@@ -81,7 +82,7 @@ pub fn trap_handler() -> ! {
         }
     }
     // handle signals (handle the sent signal)
-    //println!("[K] trap_handler:: handle_signals");
+    // println!("[K] trap_handler:: handle_signals");
     handle_signals();
 
     // check error signals (if error then exit)
@@ -95,7 +96,7 @@ pub fn trap_handler() -> ! {
 #[no_mangle]
 pub fn trap_return() -> ! {
     set_user_trap_entry();
-    let trap_cx_ptr = TRAP_CONTEXT;
+    let trap_cx_ptr = current_trap_cx_user_va();
     let user_satp = current_user_token();
     extern "C" {
         fn __alltraps();
@@ -117,11 +118,14 @@ pub fn trap_return() -> ! {
 
 #[no_mangle]
 pub fn trap_from_kernel() -> ! {
-    panic!("a trap from kernel!");
+    use riscv::register::sepc;
+    println!("stval = {:#x}, sepc = {:#x}", stval::read(), sepc::read());
+    panic!("a trap {:?} from kernel!", scause::read().cause());
 }
 
 pub use context::TrapContext;
-use crate::config::{TRAMPOLINE, TRAP_CONTEXT};
+use crate::config::{TRAMPOLINE, TRAP_CONTEXT_BASE};
+use crate::task::processor::current_trap_cx_user_va;
 
 pub fn enable_timer_interrupt() {
     unsafe { sie::set_stimer(); }

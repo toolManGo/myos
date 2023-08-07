@@ -5,13 +5,14 @@ use crate::mm::translated_byte_buffer;
 use crate::task::{current_task, current_user_token, suspend_current_and_run_next};
 use crate::sbi::console_getchar;
 use crate::fs::make_pipe;
+use crate::task::processor::current_process;
 
 const FD_STDIN: usize = 0;
 const FD_STDOUT: usize = 1;
 
 pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
     let token = current_user_token();
-    let task = current_task().unwrap();
+    let task = current_process();
     let inner = task.inner_exclusive_access();
     if fd >= inner.fd_table.len() {
         return -1;
@@ -31,7 +32,7 @@ pub fn sys_write(fd: usize, buf: *const u8, len: usize) -> isize {
 
 pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
     let token = current_user_token();
-    let task = current_task().unwrap();
+    let task = current_process();
     let inner = task.inner_exclusive_access();
     if fd >= inner.fd_table.len() {
         return -1;
@@ -53,7 +54,7 @@ pub fn sys_read(fd: usize, buf: *const u8, len: usize) -> isize {
 
 
 pub fn sys_open(path: *const u8, flags: u32) -> isize {
-    let task = current_task().unwrap();
+    let task = current_process();
     let token = current_user_token();
     let path = translated_str(token, path);
     if let Some(inode) = open_file(
@@ -70,7 +71,7 @@ pub fn sys_open(path: *const u8, flags: u32) -> isize {
 }
 
 pub fn sys_close(fd: usize) -> isize {
-    let task = current_task().unwrap();
+    let task = current_process();
     let mut inner = task.inner_exclusive_access();
     if fd >= inner.fd_table.len() {
         return -1;
@@ -83,7 +84,7 @@ pub fn sys_close(fd: usize) -> isize {
 }
 
 pub fn sys_pipe(pipe: *mut usize) -> isize {
-    let task = current_task().unwrap();
+    let task = current_process();
     let token = current_user_token();
     let mut inner = task.inner_exclusive_access();
     let (pipe_read, pipe_write) = make_pipe();
@@ -97,7 +98,7 @@ pub fn sys_pipe(pipe: *mut usize) -> isize {
 }
 
 pub fn sys_dup(fd: usize) -> isize {
-    let task = current_task().unwrap();
+    let task = current_process();
     let mut inner = task.inner_exclusive_access();
     if fd >= inner.fd_table.len() {
         return -1;

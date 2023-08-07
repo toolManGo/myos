@@ -5,8 +5,8 @@ use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use log::info;
 use riscv::register::satp;
-use crate::config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT, USER_STACK_SIZE};
-use crate::mm::address::{PhysAddr, PhysPageNum, SimpleRange, StepByOne, VirtAddr, VirtPageNum, VPNRange};
+use crate::config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE};
+use crate::mm::address::{PhysAddr, PhysPageNum, StepByOne, VirtAddr, VirtPageNum, VPNRange};
 use crate::mm::frame_allocator::{frame_alloc, FrameTracker};
 use crate::mm::page_table::{PageTable, PTEFlags};
 use spin::Mutex;
@@ -332,27 +332,27 @@ impl MemorySet {
         let mut user_stack_bottom: usize = max_end_va.into();
         // guard page
         user_stack_bottom += PAGE_SIZE;
-        let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
+        // let user_stack_top = user_stack_bottom + USER_STACK_SIZE;
 
-        memory_set.push(MapArea::new(user_stack_bottom.into(),
-                                     user_stack_top.into(),
-                                     MapType::Framed,
-                                     MapPermission::R | MapPermission::W | MapPermission::U),
-                        None,
-        );
-        // map TrapContext
-        memory_set.push(
-            MapArea::new(
-                TRAP_CONTEXT.into(),
-                TRAMPOLINE.into(),
-                MapType::Framed,
-                MapPermission::R | MapPermission::W,
-            ),
-            None,
-        );
+        // memory_set.push(MapArea::new(user_stack_bottom.into(),
+        //                              user_stack_top.into(),
+        //                              MapType::Framed,
+        //                              MapPermission::R | MapPermission::W | MapPermission::U),
+        //                 None,
+        // );
+        // // map TrapContext
+        // memory_set.push(
+        //     MapArea::new(
+        //         TRAP_CONTEXT_BASE.into(),
+        //         TRAMPOLINE.into(),
+        //         MapType::Framed,
+        //         MapPermission::R | MapPermission::W,
+        //     ),
+        //     None,
+        // );
         (
             memory_set,
-            user_stack_top,
+            user_stack_bottom,
             elf.header.pt2.entry_point() as usize,
         )
     }
