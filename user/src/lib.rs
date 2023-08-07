@@ -323,6 +323,22 @@ pub fn waittid(tid: usize) -> isize {
         }
     }
 }
+pub fn kill(pid: usize, signal: i32) -> isize {
+    sys_kill(pid, signal)
+}
+
+pub fn waitpid_nb(pid: usize, exit_code: &mut i32) -> isize {
+    sys_waitpid(pid as isize, exit_code as *mut _)
+}
+bitflags! {
+    pub struct SignalFlags: i32 {
+        const SIGINT    = 1 << 2;
+        const SIGILL    = 1 << 4;
+        const SIGABRT   = 1 << 6;
+        const SIGFPE    = 1 << 8;
+        const SIGSEGV   = 1 << 11;
+    }
+}
 
 pub fn mutex_create() -> isize {
     sys_mutex_create(false)
@@ -356,4 +372,24 @@ pub fn condvar_signal(condvar_id: usize) {
 }
 pub fn condvar_wait(condvar_id: usize, mutex_id: usize) {
     sys_condvar_wait(condvar_id, mutex_id);
+}
+#[macro_export]
+macro_rules! vstore {
+    ($var_ref: expr, $value: expr) => {
+        unsafe { core::intrinsics::volatile_store($var_ref as *const _ as _, $value) }
+    };
+}
+
+#[macro_export]
+macro_rules! vload {
+    ($var_ref: expr) => {
+        unsafe { core::intrinsics::volatile_load($var_ref as *const _ as _) }
+    };
+}
+
+#[macro_export]
+macro_rules! memory_fence {
+    () => {
+        core::sync::atomic::fence(core::sync::atomic::Ordering::SeqCst)
+    };
 }

@@ -33,7 +33,7 @@ fn main() {
 
 
 core::arch::global_asm!(include_str!("entry.asm"));
-core::arch::global_asm!(include_str!("link_app.S"));
+// core::arch::global_asm!(include_str!("link_app.S"));
 
 
 #[no_mangle]
