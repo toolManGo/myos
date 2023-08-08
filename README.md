@@ -2,7 +2,7 @@ start my first os
 
 ## 1. 环境依赖
 - RUST nightly
-- QEMU 7.0版本
+- QEMU 7.0以上版本
 - Make
 ```text
 qemu-system-riscv64 --version
