@@ -12,5 +12,6 @@ Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
 
 ## 2. 编译运行
 ```shell
+cd os
 make run
 ```
