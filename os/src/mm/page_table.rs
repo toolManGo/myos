@@ -143,8 +143,12 @@ impl PageTable {
 
     pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
         self.find_pte(va.floor()).map(|pte|{
-            let phys_page_num = pte.ppn();
-            PhysAddr::combine(phys_page_num,va.page_offset())
+            // let phys_page_num = pte.ppn();
+            // PhysAddr::combine(phys_page_num,va.page_offset())
+            let aligned_pa: PhysAddr = pte.ppn().into();
+            let offset = va.page_offset();
+            let aligned_pa_usize: usize = aligned_pa.into();
+            (aligned_pa_usize + offset).into()
         })
     }
 
