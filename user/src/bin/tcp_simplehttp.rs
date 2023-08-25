@@ -78,8 +78,8 @@ fn handle_tcp_client(client_fd: usize) -> bool {
         <body>
         
         <div class="container-fluid p-5 bg-primary text-white text-center">
-        <h1>rCore-tutorial-V3</h1>
-        <p>rCore-tutorial-V3 是一个 基于 RISC-V 架构的 类 Unix 内核.</p> 
+        <h1>myos</h1>
+        <p>感谢 rCore 指导写出该操作系统,rCore 是一个基于 RISC-V 架构的 类 Unix 内核. </p>
         </div>
         
         <div class="container mt-5">
@@ -92,11 +92,11 @@ fn handle_tcp_client(client_fd: usize) -> bool {
             <div class="col-sm-4">
             <h3>仓库地址</h3>        
             <p>repo url</p>
-            <p>https://github.com/rcore-os/rCore-Tutorial-v3</p>
+            <p>https://github.com/toolManGo/myos</p>
             </div>
             <div class="col-sm-4">
-            <h3>QQ 群号</h3>        
-            <p>Official QQ group number</p>
+            <h3></h3>
+            <p></p>
             <p>test</p>
             </div>
         </div>
