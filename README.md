@@ -15,3 +15,5 @@ Copyright (c) 2003-2022 Fabrice Bellard and the QEMU Project developers
 cd os
 make run
 ```
+## 3. 运行效果
+<img src="https://github.com/toolManGo/myos/blob/master/myosshow.gif" width="40" height="40"/>
