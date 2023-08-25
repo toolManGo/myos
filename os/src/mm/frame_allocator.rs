@@ -4,7 +4,7 @@ use core::fmt::{Debug, Formatter};
 use lazy_static::lazy_static;
 use crate::config::MEMORY_END;
 use crate::mm::address::{PhysAddr, PhysPageNum};
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 
 /// an implementation for frame allocator
 /// 物理页号区间 [ current , end ) 此前均 从未 被分配出去过，而向量 recycled 以后入先出的方式保存了被回收的物理页号
@@ -43,6 +43,17 @@ impl FrameAllocator for StackFrameAllocator {
         }
     }
 
+    fn alloc_more(&mut self, pages: usize) -> Option<Vec<PhysPageNum>> {
+        if self.current + pages >= self.end {
+            None
+        } else {
+            self.current += pages;
+            let arr: Vec<usize> = (1..pages + 1).collect();
+            let v = arr.iter().map(|x| (self.current - x).into()).collect();
+            Some(v)
+        }
+    }
+
     fn dealloc(&mut self, ppn: PhysPageNum) {
         let ppn = ppn.0;
         // validity check
@@ -57,6 +68,7 @@ impl FrameAllocator for StackFrameAllocator {
 trait FrameAllocator {
     fn new() -> Self;
     fn alloc(&mut self) -> Option<PhysPageNum>;
+    fn alloc_more(&mut self, pages: usize) -> Option<Vec<PhysPageNum>>;
     fn dealloc(&mut self, ppn: PhysPageNum);
 }
 
@@ -65,8 +77,8 @@ trait FrameAllocator {
 type FrameAllocatorImpl = StackFrameAllocator;
 
 lazy_static! {
-    pub static ref FRAME_ALLOCATOR: UPSafeCell<FrameAllocatorImpl> = unsafe {
-        UPSafeCell::new(FrameAllocatorImpl::new())
+    pub static ref FRAME_ALLOCATOR: UPIntrFreeCell<FrameAllocatorImpl> = unsafe {
+        UPIntrFreeCell::new(FrameAllocatorImpl::new())
     };
 }
 
@@ -85,6 +97,12 @@ pub fn frame_alloc() -> Option<FrameTracker> {
         .alloc()
         .map(|ppn| FrameTracker::new(ppn))
 }
+pub fn frame_alloc_more(num: usize) -> Option<Vec<FrameTracker>> {
+    FRAME_ALLOCATOR
+        .exclusive_access()
+        .alloc_more(num)
+        .map(|x| x.iter().map(|&t| FrameTracker::new(t)).collect())
+}
 
 pub fn frame_dealloc(ppn: PhysPageNum) {
     FRAME_ALLOCATOR
@@ -95,6 +113,7 @@ pub fn frame_dealloc(ppn: PhysPageNum) {
 /// manage a frame which has the same lifecycle as the tracker
 pub struct FrameTracker {
     pub ppn: PhysPageNum,
+    pub nodrop: bool,
 }
 
 impl FrameTracker {
@@ -104,7 +123,11 @@ impl FrameTracker {
         for i in bytes_array {
             *i = 0;
         }
-        Self { ppn }
+        Self { ppn ,nodrop:false}
+    }
+
+    pub fn new_noalloc(ppn: PhysPageNum) -> Self {
+        Self { ppn, nodrop: true }
     }
 }
 
@@ -116,6 +139,9 @@ impl Debug for FrameTracker {
 
 impl Drop for FrameTracker {
     fn drop(&mut self) {
+        if self.nodrop {
+            return;
+        }
         frame_dealloc(self.ppn);
     }
 }

@@ -1,5 +1,5 @@
 use crate::drivers::BLOCK_DEVICE;
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 use alloc::sync::Arc;
 use lazy_static::*;
 use bitflags::*;
@@ -17,10 +17,10 @@ use easy_fs::{
 pub struct OSInode {
     readable: bool,
     writable: bool,
-    inner: UPSafeCell<OSInodeInner>,
+    inner: UPIntrFreeCell<OSInodeInner>,
 }
 
-/// The OS inode inner in 'UPSafeCell'
+/// The OS inode inner in 'UPIntrFreeCell'
 pub struct OSInodeInner {
     offset: usize,
     inode: Arc<Inode>,
@@ -37,7 +37,7 @@ impl OSInode {
             readable,
             writable,
             inner: unsafe {
-                UPSafeCell::new(OSInodeInner {
+                UPIntrFreeCell::new(OSInodeInner {
                     offset: 0,
                     inode,
                 })

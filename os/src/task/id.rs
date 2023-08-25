@@ -1,6 +1,6 @@
 use crate::config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE, TRAP_CONTEXT_BASE, USER_STACK_SIZE};
 use crate::mm::{MapPermission, VirtAddr, KERNEL_SPACE, PhysPageNum};
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 use lazy_static::*;
 use alloc::{
     sync::{Arc, Weak},
@@ -11,11 +11,11 @@ use crate::task::process::ProcessControlBlock;
 
 lazy_static! {
     /// Pid allocator instance through lazy_static!
-    static ref PID_ALLOCATOR: UPSafeCell<RecycleAllocator> =
-        unsafe { UPSafeCell::new(RecycleAllocator::new()) };
+    static ref PID_ALLOCATOR: UPIntrFreeCell<RecycleAllocator> =
+        unsafe { UPIntrFreeCell::new(RecycleAllocator::new()) };
 
-    static ref KSTACK_ALLOCATOR: UPSafeCell<RecycleAllocator> =
-        unsafe { UPSafeCell::new(RecycleAllocator::new()) };
+    static ref KSTACK_ALLOCATOR: UPIntrFreeCell<RecycleAllocator> =
+        unsafe { UPIntrFreeCell::new(RecycleAllocator::new()) };
 }
 pub const IDLE_PID: usize = 0;
 pub struct PidHandle(pub usize);

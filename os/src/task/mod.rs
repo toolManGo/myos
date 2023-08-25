@@ -25,14 +25,13 @@ pub use action::{SignalAction, SignalActions};
 pub use manager::{add_task, fetch_task, pid2process, remove_from_pid2process};
 pub use id::{pid_alloc, KernelStack, PidHandle};
 pub use processor::{
-    current_task, current_trap_cx, current_user_token, run_tasks, schedule, take_current_task,
+    current_task, current_trap_cx, current_user_token, run_tasks, schedule, take_current_task,current_process
 };
 pub use signal::{SignalFlags, MAX_SIG};
 use crate::sbi::shutdown;
 use crate::task::id::TaskUserRes;
 use crate::timer::remove_timer;
 use process::ProcessControlBlock;
-use crate::task::processor::current_process;
 
 lazy_static! {
     /// Creation of initial process
@@ -49,6 +48,14 @@ lazy_static! {
 
 pub fn add_initproc() {
     let _initproc = INITPROC.clone();
+}
+
+/// This function must be followed by a schedule
+pub fn block_current_task() -> *mut TaskContext {
+    let task = take_current_task().unwrap();
+    let mut task_inner = task.inner_exclusive_access();
+    task_inner.task_status = TaskStatus::Blocked;
+    &mut task_inner.task_cx as *mut TaskContext
 }
 
 pub fn block_current_and_run_next() {

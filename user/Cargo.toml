@@ -12,7 +12,8 @@ spin = "0.9"
 lock_api = "=0.4.6"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
-
+embedded-graphics = "0.7.1"
+oorandom ="11"
 [profile.release]
 opt-level = "z" # Optimize for size.
 strip = true    # Automatically strip symbols from the binary.

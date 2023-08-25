@@ -14,9 +14,16 @@ riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 spin = "0.9"
 lock_api = "=0.4.6"
 xmas-elf = "0.7.0"
-virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "4ee80e5" }
+#virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "4ee80e5" }
+virtio-drivers = { git = "https://github.com/rcore-os/virtio-drivers", rev = "70b5850" }
 easy-fs = { path = "../easy-fs" }
 sbi-rt = { version = "0.0.2", features = ["legacy"] }
+
+lose-net-stack = { git = "https://github.com/yfblock/lose-net-stack", rev = "db42380" }
+
+embedded-graphics = "0.7.1"
+tinybmp = "0.3.1"
+volatile = "0.3"
 
 [profile.release]
 debug = true

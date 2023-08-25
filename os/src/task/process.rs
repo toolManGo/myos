@@ -5,7 +5,7 @@ use super::{add_task, SignalFlags};
 use super::{pid_alloc, PidHandle};
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{MemorySet, KERNEL_SPACE};
-use crate::sync::{Condvar, Mutex, Semaphore, UPSafeCell};
+use crate::sync::{Condvar, Mutex, Semaphore, UPIntrFreeCell, UPIntrRefMut};
 use crate::trap::{trap_handler, TrapContext};
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
@@ -18,11 +18,11 @@ use crate::task::SignalActions;
 
 pub struct ProcessControlBlock{
     pub pid:PidHandle,
-    inner: UPSafeCell<ProcessControlBlockInner>
+    inner: UPIntrFreeCell<ProcessControlBlockInner>
 }
 
 impl ProcessControlBlock {
-    pub fn inner_exclusive_access(&self) -> RefMut<'_, ProcessControlBlockInner> {
+    pub fn inner_exclusive_access(&self) -> UPIntrRefMut<'_, ProcessControlBlockInner> {
         self.inner.exclusive_access()
     }
 
@@ -34,7 +34,7 @@ impl ProcessControlBlock {
         let process = Arc::new(Self {
             pid: pid_handle,
             inner: unsafe {
-                UPSafeCell::new(ProcessControlBlockInner {
+                UPIntrFreeCell::new(ProcessControlBlockInner {
                     is_zombie: false,
                     memory_set,
                     parent: None,
@@ -167,7 +167,7 @@ impl ProcessControlBlock {
         let child = Arc::new(Self {
             pid,
             inner: unsafe {
-                UPSafeCell::new(ProcessControlBlockInner {
+                UPIntrFreeCell::new(ProcessControlBlockInner {
                     is_zombie: false,
                     memory_set,
                     parent: Some(Arc::downgrade(self)),

@@ -1,12 +1,12 @@
 use alloc::collections::BTreeMap;
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use lazy_static::lazy_static;
 use log::info;
 use riscv::register::satp;
 use crate::config::{MEMORY_END, MMIO, PAGE_SIZE, TRAMPOLINE};
-use crate::mm::address::{PhysAddr, PhysPageNum, StepByOne, VirtAddr, VirtPageNum, VPNRange};
+use crate::mm::address::{PhysAddr, PhysPageNum, PPNRange, StepByOne, VirtAddr, VirtPageNum, VPNRange};
 use crate::mm::frame_allocator::{frame_alloc, FrameTracker};
 use crate::mm::page_table::{PageTable, PTEFlags};
 use spin::Mutex;
@@ -27,8 +27,8 @@ extern "C" {
 
 lazy_static! {
     /// a memory set instance through lazy_static! managing kernel space
-    pub static ref KERNEL_SPACE: Arc<UPSafeCell<MemorySet>> =
-        Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
+    pub static ref KERNEL_SPACE: Arc<UPIntrFreeCell<MemorySet>> =
+        Arc::new(unsafe { UPIntrFreeCell::new(MemorySet::new_kernel()) });
 }
 
 
@@ -89,9 +89,25 @@ impl MapArea {
                 ppn = frame.ppn;
                 self.data_frames.insert(vpn, frame);
             }
+            MapType::Linear(pn_offset) => {
+                // check for sv39
+                assert!(vpn.0 < (1usize << 27));
+                ppn = PhysPageNum((vpn.0 as isize + pn_offset) as usize);
+            }
+            MapType::Noalloc => {
+                panic!("Noalloc should not be mapped");
+            }
         }
         let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
         page_table.map(vpn, ppn, pte_flags)
+    }
+
+    pub fn map_noalloc(&mut self, page_table: &mut PageTable,ppn_range:PPNRange) {
+        for (vpn,ppn) in core::iter::zip(self.vpn_range,ppn_range) {
+            self.data_frames.insert(vpn, FrameTracker::new_noalloc(ppn));
+            let pte_flags = PTEFlags::from_bits(self.map_perm.bits).unwrap();
+            page_table.map(vpn, ppn, pte_flags);
+        }
     }
 
     /// data: start-aligned but maybe with shorter length
@@ -132,6 +148,9 @@ impl MapArea {
 pub enum MapType {
     Identical,
     Framed,
+    /// offset of page num
+    Linear(isize),
+    Noalloc,
 }
 
 bitflags! {
@@ -158,6 +177,10 @@ pub struct MemorySet {
 }
 
 impl MemorySet {
+    pub fn push_noalloc(&mut self, mut map_area: MapArea, ppn_range: PPNRange) {
+        map_area.map_noalloc(&mut self.page_table, ppn_range);
+        self.areas.push(map_area);
+    }
     pub fn recycle_data_pages(&mut self) {
         self.areas.clear();
     }
@@ -184,7 +207,7 @@ impl MemorySet {
         }
     }
 
-    fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
+    pub fn push(&mut self, mut map_area: MapArea, data: Option<&[u8]>) {
         map_area.map(&mut self.page_table);
         if let Some(data) = data {
             map_area.copy_data(&mut self.page_table, data);

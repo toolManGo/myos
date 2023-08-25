@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 use core::cell::RefMut;
 use crate::fs::{File, Stdin, Stdout};
 use crate::mm::page_table::translated_refmut;
-use crate::sync::UPSafeCell;
+use crate::sync::{UPIntrFreeCell, UPIntrRefMut};
 use crate::task::action::SignalActions;
 use crate::task::id::{KernelStack, kstack_alloc, pid_alloc, PidHandle, TaskUserRes};
 use crate::task::process::ProcessControlBlock;
@@ -23,7 +23,7 @@ pub struct TaskControlBlock {
     /// Kernel stack corresponding to PID
     pub kernel_stack: KernelStack,
     // mutable
-    inner: UPSafeCell<TaskControlBlockInner>,
+    inner: UPIntrFreeCell<TaskControlBlockInner>,
 }
 
 pub struct TaskControlBlockInner {
@@ -59,7 +59,7 @@ impl TaskControlBlock {
             process: Arc::downgrade(&process),
             kernel_stack,
             inner: unsafe {
-                UPSafeCell::new(TaskControlBlockInner {
+                UPIntrFreeCell::new(TaskControlBlockInner {
                     res: Some(res),
                     trap_cx_ppn,
                     task_cx: TaskContext::goto_trap_return(kstack_top),
@@ -70,7 +70,7 @@ impl TaskControlBlock {
         }
     }
 
-    pub fn inner_exclusive_access(&self) -> RefMut<'_, TaskControlBlockInner> {
+    pub fn inner_exclusive_access(&self) -> UPIntrRefMut<'_, TaskControlBlockInner> {
         self.inner.exclusive_access()
     }
 

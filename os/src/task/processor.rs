@@ -1,7 +1,7 @@
 use super::__switch;
 use super::{fetch_task, TaskStatus};
 use super::{TaskContext, TaskControlBlock};
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 use crate::trap::TrapContext;
 use alloc::sync::Arc;
 use lazy_static::*;
@@ -31,7 +31,7 @@ impl Processor {
 }
 
 lazy_static! {
-    pub static ref PROCESSOR: UPSafeCell<Processor> = unsafe { UPSafeCell::new(Processor::new()) };
+    pub static ref PROCESSOR: UPIntrFreeCell<Processor> = unsafe { UPIntrFreeCell::new(Processor::new()) };
 }
 
 pub fn run_tasks() {

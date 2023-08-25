@@ -29,24 +29,37 @@ impl ConsoleBuffer {
     }
 }
 
+
+struct Stdout;
+
+impl Write for Stdout {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        write(STDOUT, s.as_bytes());
+        Ok(())
+    }
+}
 impl Write for ConsoleBuffer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        for c in s.as_bytes().iter() {
-            self.0.push_back(*c);
-            if (*c == b'\n' || self.0.len() == CONSOLE_BUFFER_SIZE) && -1 == self.flush() {
-                return Err(fmt::Error);
-            }
-        }
+        // for c in s.as_bytes().iter() {
+        //     self.0.push_back(*c);
+        //     if (*c == b'\n' || self.0.len() == CONSOLE_BUFFER_SIZE) && -1 == self.flush() {
+        //         return Err(fmt::Error);
+        //     }
+        // }
+        // Ok(())
+
+        write(STDOUT, s.as_bytes());
         Ok(())
     }
 }
 
 #[allow(unused)]
 pub fn print(args: fmt::Arguments) {
-    let mut buf = CONSOLE_BUFFER.lock();
-    // buf.write_fmt(args).unwrap();
-    // BUG FIX: 关闭 stdout 后，本函数不能触发 panic，否则会造成死锁
-    buf.write_fmt(args);
+    // let mut buf = CONSOLE_BUFFER.lock();
+    // // buf.write_fmt(args).unwrap();
+    // // BUG FIX: 关闭 stdout 后，本函数不能触发 panic，否则会造成死锁
+    // buf.write_fmt(args);
+    Stdout.write_fmt(args).unwrap();
 }
 
 #[macro_export]

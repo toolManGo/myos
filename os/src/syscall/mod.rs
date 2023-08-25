@@ -4,10 +4,16 @@ mod fs;
 mod process;
 mod thread;
 mod sync;
+mod input;
+mod gui;
+mod net;
 
 use fs::*;
 use process::*;
 use crate::fs::Stat;
+use crate::syscall::gui::{sys_framebuffer, sys_framebuffer_flush};
+use crate::syscall::input::{sys_event_get, sys_key_pressed};
+use crate::syscall::net::{sys_accept, sys_connect, sys_listen};
 use crate::syscall::sync::{sys_condvar_create, sys_condvar_signal, sys_condvar_wait, sys_mutex_create, sys_mutex_lock, sys_mutex_unlock, sys_semaphore_create, sys_semaphore_down, sys_semaphore_up, sys_sleep};
 use crate::syscall::thread::{sys_gettid, sys_thread_create, sys_waittid};
 use crate::task::{SignalAction, sys_sigreturn};
@@ -54,7 +60,14 @@ const SYSCALL_CONDVAR_CREATE: usize = 1030;
 const SYSCALL_CONDVAR_SIGNAL: usize = 1031;
 const SYSCALL_CONDVAR_WAIT: usize = 1032;
 
+const SYSCALL_FRAMEBUFFER: usize = 2000;
+const SYSCALL_FRAMEBUFFER_FLUSH: usize = 2001;
+const SYSCALL_EVENT_GET: usize = 3000;
+const SYSCALL_KEY_PRESSED: usize = 3001;
 
+const SYSCALL_CONNECT: usize = 29;
+const SYSCALL_LISTEN: usize = 30;
+const SYSCALL_ACCEPT: usize = 31;
 
 
 /// handle syscall exception with `syscall_id` and other arguments
@@ -104,6 +117,14 @@ pub fn syscall(syscall_id: usize, args: [usize; 4]) -> isize {
         SYSCALL_CONDVAR_CREATE => sys_condvar_create(),
         SYSCALL_CONDVAR_SIGNAL => sys_condvar_signal(args[0]),
         SYSCALL_CONDVAR_WAIT => sys_condvar_wait(args[0], args[1]),
+        SYSCALL_FRAMEBUFFER => sys_framebuffer(),
+        SYSCALL_FRAMEBUFFER_FLUSH => sys_framebuffer_flush(),
+        SYSCALL_EVENT_GET => sys_event_get(),
+        SYSCALL_KEY_PRESSED => sys_key_pressed(),
+
+        SYSCALL_CONNECT => sys_connect(args[0] as _, args[1] as _, args[2] as _),
+        SYSCALL_LISTEN => sys_listen(args[0] as _),
+        SYSCALL_ACCEPT => sys_accept(args[0] as _),
         _ => panic!("Unsupported syscall_id: {}", syscall_id),
     }
 }

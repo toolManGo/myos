@@ -25,8 +25,7 @@ impl From<PhysAddr> for usize {
 }
 
 impl PhysAddr {
-    pub fn page_offset(&self) -> usize { self.0 & (PAGE_SIZE - 1) }
-    pub fn combine(ppn:PhysPageNum,offset:usize) -> Self {
+    pub fn combine(ppn: PhysPageNum, offset: usize) -> Self {
         assert!(offset < PAGE_SIZE);
         Self((ppn.0 << PAGE_SIZE_BITS) | offset)
     }
@@ -42,11 +41,16 @@ impl From<PhysAddr> for PhysPageNum {
 impl PhysAddr {
     pub fn floor(&self) -> PhysPageNum { PhysPageNum(self.0 / PAGE_SIZE) }
     pub fn ceil(&self) -> PhysPageNum { PhysPageNum((self.0 + PAGE_SIZE - 1) / PAGE_SIZE) }
+    pub fn page_offset(&self) -> usize {
+        self.0 & (PAGE_SIZE - 1)
+    }
+    pub fn aligned(&self) -> bool {
+        self.page_offset() == 0
+    }
 }
 
 
-
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct PhysPageNum(pub usize);
 
 
@@ -104,7 +108,7 @@ impl From<usize> for VirtAddr {
     }
 }
 
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq,Debug)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug)]
 pub struct VirtPageNum(pub usize);
 
 impl VirtPageNum {
@@ -138,7 +142,6 @@ impl From<usize> for VirtPageNum {
         Self(v)
     }
 }
-
 
 
 /// T: {PhysAddr, VirtAddr, PhysPageNum, VirtPageNum}
@@ -179,7 +182,8 @@ impl StepByOne for PhysPageNum {
         self.0 += 1;
     }
 }
-#[derive(Copy, Clone)]
+
+#[derive(Copy, Clone, Debug)]
 /// a simple range structure for type T
 pub struct SimpleRange<T>
     where
@@ -253,3 +257,6 @@ impl<T> Iterator for SimpleRangeIterator<T>
 
 /// a simple range structure for virtual page number
 pub type VPNRange = SimpleRange<VirtPageNum>;
+
+// #[derive(Debug)]
+pub type PPNRange = SimpleRange<PhysPageNum>;

@@ -6,7 +6,8 @@
 
 extern crate alloc;
 use log::*;
-
+#[path = "boards/qemu.rs"]
+mod board;
 #[macro_use]
 mod console;
 mod lang_items;
@@ -22,6 +23,8 @@ mod timer;
 mod mm;
 mod fs;
 mod drivers;
+mod net;
+// mod build;
 
 #[macro_use]
 extern crate bitflags;
@@ -35,24 +38,38 @@ fn main() {
 core::arch::global_asm!(include_str!("entry.asm"));
 // core::arch::global_asm!(include_str!("link_app.S"));
 
+use lazy_static::*;
+use sync::UPIntrFreeCell;
+use crate::drivers::chardev::CharDevice;
+use crate::drivers::{GPU_DEVICE, KEYBOARD_DEVICE, MOUSE_DEVICE, UART};
 
+lazy_static! {
+    pub static ref DEV_NON_BLOCKING_ACCESS: UPIntrFreeCell<bool> =
+        unsafe { UPIntrFreeCell::new(false) };
+}
 #[no_mangle]
 pub fn rust_main() -> ! {
     clear_bss();
-    logging::init();
-    println!("[kernel] Hello, myos!");
+    // logging::init();
     mm::init();
+    UART.init();
+    println!("[kernel] Hello, myos!");
+    println!("KERN: init gpu");
+    let _gpu = GPU_DEVICE.clone();
+    println!("KERN: init keyboard");
+    let _keyboard = KEYBOARD_DEVICE.clone();
+    println!("KERN: init mouse");
+    let _mouse = MOUSE_DEVICE.clone();
+    println!("KERN: init trap");
     // mm::remap_test();
     // task::add_initproc();
-    // println!("after initproc!");
     trap::init();
     trap::enable_timer_interrupt();
     timer::set_next_trigger();
-    // println!("after timer!");
+    board::device_init();
     fs::list_apps();
-    // println!("after list_apps!");
     task::add_initproc();
-    // println!("after add_initproc!");
+    *DEV_NON_BLOCKING_ACCESS.exclusive_access() = true;
     task::run_tasks();
     panic!("Unreachable in rust_main!");
 }

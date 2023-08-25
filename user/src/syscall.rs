@@ -41,6 +41,15 @@ const SYSCALL_CONDVAR_CREATE: usize = 1030;
 const SYSCALL_CONDVAR_SIGNAL: usize = 1031;
 const SYSCALL_CONDVAR_WAIT: usize = 1032;
 
+const SYSCALL_FRAMEBUFFER: usize = 2000;
+const SYSCALL_FRAMEBUFFER_FLUSH: usize = 2001;
+const SYSCALL_EVENT_GET: usize = 3000;
+const SYSCALL_KEY_PRESSED: usize = 3001;
+
+const SYSCALL_CONNECT: usize = 29;
+const SYSCALL_LISTEN: usize = 30;
+const SYSCALL_ACCEPT: usize = 31;
+
 
 pub const SYSCALL_ENABLE_DEADLOCK_DETECT: usize = 469;
 
@@ -262,6 +271,38 @@ pub fn sys_condvar_wait(condvar_id: usize, mutex_id: usize) -> isize {
 }
 
 
+pub fn sys_framebuffer() -> isize {
+    syscall(SYSCALL_FRAMEBUFFER, [0, 0, 0])
+}
+
+pub fn sys_framebuffer_flush() -> isize {
+    syscall(SYSCALL_FRAMEBUFFER_FLUSH, [0, 0, 0])
+}
+
+pub fn sys_event_get() -> isize {
+    syscall(SYSCALL_EVENT_GET, [0, 0, 0])
+}
+
+pub fn sys_key_pressed() -> isize {
+    syscall(SYSCALL_KEY_PRESSED, [0, 0, 0])
+}
+
 pub fn sys_kill(pid: usize, signal: i32) -> isize {
     syscall(SYSCALL_KILL, [pid, signal as usize, 0])
+}
+
+pub fn sys_connect(dest: u32, sport: u16, dport: u16) -> isize {
+    syscall(
+        SYSCALL_CONNECT,
+        [dest as usize, sport as usize, dport as usize],
+    )
+}
+
+// just listen for tcp connections now
+pub fn sys_listen(sport: u16) -> isize {
+    syscall(SYSCALL_LISTEN, [sport as usize, 0, 0])
+}
+
+pub fn sys_accept(socket_fd: usize) -> isize {
+    syscall(SYSCALL_ACCEPT, [socket_fd, 0, 0])
 }

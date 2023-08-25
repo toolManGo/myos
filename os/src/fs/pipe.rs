@@ -1,7 +1,7 @@
 use super::File;
 use alloc::sync::{Arc, Weak};
 use crate::mm::page_table::UserBuffer;
-use crate::sync::UPSafeCell;
+use crate::sync::UPIntrFreeCell;
 use crate::task::suspend_current_and_run_next;
 
 
@@ -10,18 +10,18 @@ const RING_BUFFER_SIZE: usize = 32;
 pub struct Pipe {
     readable: bool,
     writable: bool,
-    buffer: Arc<UPSafeCell<PipeRingBuffer>>,
+    buffer: Arc<UPIntrFreeCell<PipeRingBuffer>>,
 }
 
 impl Pipe {
-    pub fn read_end_with_buffer(buffer: Arc<UPSafeCell<PipeRingBuffer>>) -> Self {
+    pub fn read_end_with_buffer(buffer: Arc<UPIntrFreeCell<PipeRingBuffer>>) -> Self {
         Self {
             readable: true,
             writable: false,
             buffer,
         }
     }
-    pub fn write_end_with_buffer(buffer: Arc<UPSafeCell<PipeRingBuffer>>) -> Self {
+    pub fn write_end_with_buffer(buffer: Arc<UPIntrFreeCell<PipeRingBuffer>>) -> Self {
         Self {
             readable: false,
             writable: true,
@@ -109,7 +109,7 @@ impl PipeRingBuffer {
 /// Crate a pipe return (read_end, write_end)
 pub fn make_pipe() -> (Arc<Pipe>, Arc<Pipe>) {
     let buffer = Arc::new(unsafe {
-        UPSafeCell::new(PipeRingBuffer::new())
+        UPIntrFreeCell::new(PipeRingBuffer::new())
     });
     let read_end = Arc::new(Pipe::read_end_with_buffer(buffer.clone()));
     let write_end = Arc::new(Pipe::write_end_with_buffer(buffer.clone()));

@@ -181,9 +181,9 @@ pub fn open(path: &str, flags: OpenFlags) -> isize {
 }
 
 pub fn close(fd: usize) -> isize {
-    if fd == STDOUT {
-        console::flush();
-    }
+    // if fd == STDOUT {
+    //     console::flush();
+    // }
     sys_close(fd)
 }
 
@@ -216,7 +216,7 @@ pub fn mail_write(pid: usize, buf: &[u8]) -> isize {
 }
 
 pub fn exit(exit_code: i32) -> ! {
-    console::flush();
+    // console::flush();
     sys_exit(exit_code);
 }
 
@@ -278,11 +278,12 @@ pub fn sleep_blocking(sleep_ms: usize) {
     sys_sleep(sleep_ms);
 }
 
-pub fn sleep(period_ms: usize) {
-    let start = get_time();
-    while get_time() < start + period_ms as isize {
-        sys_yield();
-    }
+pub fn sleep(period_ms: usize)->isize {
+    // let start = get_time();
+    // while get_time() < start + period_ms as isize {
+    //     sys_yield();
+    // }
+    syscall(SYSCALL_SLEEP, [period_ms, 0, 0])
 }
 pub fn mmap(start: usize, len: usize, prot: usize) -> isize {
     sys_mmap(start, len, prot)
@@ -372,6 +373,32 @@ pub fn condvar_signal(condvar_id: usize) {
 }
 pub fn condvar_wait(condvar_id: usize, mutex_id: usize) {
     sys_condvar_wait(condvar_id, mutex_id);
+}
+
+pub fn framebuffer() -> isize {
+    sys_framebuffer()
+}
+pub fn framebuffer_flush() -> isize {
+    sys_framebuffer_flush()
+}
+pub fn key_pressed() -> bool {
+    if sys_key_pressed() == 1 {
+        true
+    } else {
+        false
+    }
+}
+
+pub fn connect(ip: u32, sport: u16, dport: u16) -> isize {
+    sys_connect(ip, sport, dport)
+}
+
+pub fn listen(sport: u16) -> isize {
+    sys_listen(sport)
+}
+
+pub fn accept(socket_fd: usize) -> isize {
+    sys_accept(socket_fd)
 }
 #[macro_export]
 macro_rules! vstore {

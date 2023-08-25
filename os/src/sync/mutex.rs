@@ -1,4 +1,4 @@
-use super::UPSafeCell;
+use super::UPIntrFreeCell;
 use crate::task::TaskControlBlock;
 use crate::task::{block_current_and_run_next, suspend_current_and_run_next};
 use crate::task::{current_task};
@@ -11,13 +11,13 @@ pub trait Mutex: Sync + Send {
 }
 
 pub struct MutexSpin {
-    locked: UPSafeCell<bool>,
+    locked: UPIntrFreeCell<bool>,
 }
 
 impl MutexSpin {
     pub fn new() -> Self {
         Self {
-            locked: unsafe { UPSafeCell::new(false) },
+            locked: unsafe { UPIntrFreeCell::new(false) },
         }
     }
 }
@@ -44,7 +44,7 @@ impl Mutex for MutexSpin {
 }
 
 pub struct MutexBlocking {
-    inner: UPSafeCell<MutexBlockingInner>,
+    inner: UPIntrFreeCell<MutexBlockingInner>,
 }
 
 pub struct MutexBlockingInner {
@@ -56,7 +56,7 @@ impl MutexBlocking {
     pub fn new() -> Self {
         Self {
             inner: unsafe {
-                UPSafeCell::new(MutexBlockingInner {
+                UPIntrFreeCell::new(MutexBlockingInner {
                     locked: false,
                     wait_queue: VecDeque::new(),
                 })
