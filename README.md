@@ -16,4 +16,4 @@ cd os
 make run
 ```
 ## 3. 运行效果
-<img src="https://github.com/toolManGo/myos/blob/master/myosshow.gif" width="40" height="40"/>
+<img src="https://github.com/toolManGo/myos/blob/master/myosshow.gif" width="428" height="240"/>
