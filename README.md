@@ -1,4 +1,4 @@
-start my first os
+Starting to implement my first OS based on the rCore tutorial.
 
 ## 1. 环境依赖
 - RUST nightly
